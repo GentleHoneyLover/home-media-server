@@ -1,4 +1,9 @@
+<p align="center">
+  <img width="400" src="logo.png" alt="Ubuntu Server">
+</p>
+
 # A guide to install and configure a home media server
+
 The following guide covers the main steps needed to setup a home media center on Ubuntu 20.04. Most of these steps will work on other Ubuntu versions (but haven't been tested).
 
 The below isn't a rocket science obviously — I started it for my own sanity (to document what I've done and make it repeatable) but others might find it useful as well :)
