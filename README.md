@@ -10,7 +10,10 @@ The below isn't a rocket science obviously — I started it for my own sanity (t
 
 The end result is a headless Ubuntu Server 20.04 with QEMU/KVM hypervisor, Docker, ZFS and an admin web UI to manage all of this.
 
-## 1. Initial setup
+## 1. Installation
+Coming soon...
+
+## 2. Initial setup
 
 ### Upload ssh keys from the client machine
 ```
@@ -81,7 +84,8 @@ sudo usermod -a -G media media
 usermod -a -G kvm <username>
 ```
 
-### (Optionally) install GUI (better to do it in one of the VMs rather than the host)
+### (Optionally) install GUI (
+Better to do it in a VM rather than on the host.
 ```
 sudo apt install lubuntu-desktop --no-install-recommends
 ```
@@ -106,7 +110,7 @@ From the GUI session run this and enter credentials:
 sudo vnclicensewiz
 ```
 
-## 2. Preparing disks for zfs
+## 3. Preparing disks for zfs
 
 ### Add disk aliases 
 Check `/dev/disk/by-id/` folder to identify your disks and add corresponding aliases to `/etc/zfs/vdev_id.conf`:
@@ -122,7 +126,7 @@ alias ssd2 /dev/disk/by-id/
 alias ssdz /dev/disk/by-id/
 ```
 
-### To apply the changes run;
+### To apply changes run
 ```
 sudo udevadm trigger
 ```
@@ -142,7 +146,7 @@ sudo zfs set atime=off hdd-pool
 zfs create <nameofzpool>/<nameofdataset>
 ```
 
-## 3. Optional tweaks
+## 4. Optional tweaks
 
 ### Disable motd news
 Edit `/etc/default/motd-new` as needed
@@ -150,13 +154,15 @@ Edit `/etc/default/motd-new` as needed
 ### Disable motd help text 
 Edit `/etc/update-motd.d/10-help-text` as needed
 
-### If using cockpit, enable updates
+### If using cockpit, you can enable capability to control updates
+Cockpit seem to only be able to work with NetworkManager, so a change of netplan config is needed to allow it to check for updates.
+
 Edit `/etc/netplan/00-installer-config.yaml` and add to the network section:
 ```
 renderer: NetworkManager
 ```
 
-## 4. Install and setup Docker
+## 5. Install and setup Docker
 
 ### Add repos, keys and install packages
 ```
@@ -184,7 +190,7 @@ wget https://launchpad.net/ubuntu/+source/cockpit/215-1~ubuntu19.10.1/+build/188
 sudo dpkg -i cockpit-docker_215-1~ubuntu19.10.1_all.deb
 ```
 
-## 5. (Alternatively) install and setup Podman
+## 6. (Alternatively) install and setup Podman
 
 ### Add repos, keys and install packages
 ```
@@ -207,7 +213,7 @@ graphroot = "/mnt/data/container-data/containers/storage"
 rootless_storage_path = "/mnt/data/container-data/containers-rootless/storage"
 ```
 
-## 6. Setting up samba
+## 7. Setting up samba
 
 ### Add new system users as needed
 ```
