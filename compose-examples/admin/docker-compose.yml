@@ -1,0 +1,157 @@
+version: "3"
+services:
+
+  watchyourlan:
+    container_name: watchyourlan
+    image: docker.io/aceberg/watchyourlan
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+      - IFACE=
+      - GUIIP=
+      - GUIPORT=8840
+      - TIMEOUT=60 #1 minute
+      - THEME=flatly
+      - SHOUTRRR_URL=pushover://shoutrrr:<app_token>@<user_key>
+      - GUIAUTH=login:<password>
+    volumes:
+      - ${VLM_PATH}/watchyourlan:/data
+
+  pialert:
+    container_name: pialert
+    image: docker.io/jokobsk/pi.alert:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+      - HOST_USER_ID=${UID}
+      - HOST_USER_GID=${GID}
+      - PORT=20211
+    volumes:
+      - ${VLM_PATH}/pialert/config:/home/pi/pialert/config
+      - ${VLM_PATH}/pialert/db/pialert.db:/home/pi/pialert/db/pialert.db
+      - ${VLM_PATH}/pialert/log:/home/pi/pialert/log
+
+  uptime-kuma:
+    container_name: uptime-kuma
+    image: docker.io/louislam/uptime-kuma
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+    ports:
+      - 3001:3001
+    volumes:
+      - ${VLM_PATH}/update-kuma:/app/data
+
+  pihole:
+    container_name: pihole
+    image: docker.io/pihole/pihole:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      # WEBPASSWORD: 'set a secure password here or it will be random'
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      # - 67:67/udp # Only required if you are using Pi-hole as your DHCP server
+      - 8081:80/tcp
+    volumes:
+      - ${VLM_PATH}/pihole/pihole:/etc/pihole
+      - ${VLM_PATH}/pihole/dnsmasq:/etc/dnsmasq.d
+    cap_add:
+      - NET_ADMIN # Recommended but not required (DHCP needs NET_ADMIN)
+    profiles:
+      - donotstart
+
+  adguard:
+    container_name: adguard
+    image: docker.io/adguard/adguardhome
+    restart: unless-stopped
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      # - 67:67/udp # Only required if you are using Adguard as your DHCP server
+      # - 68:68/udp # Only required if you are using Adguard as your DHCP server
+      - 3000:3000/tcp
+    volumes:
+      - ${VLM_PATH}/adguard/data:/opt/adguardhome/work
+      - ${VLM_PATH}/adguard/config:/opt/adguardhome/conf
+    profiles:
+      - donotstart
+
+  godaddy-ddns:
+    container_name: godaddy-ddns
+    image: docker.io/linuxshots/godaddy-ddns:latest
+    restart: unless-stopped
+    environment:
+      - GD_NAME=
+      - GD_DOMAIN=
+      - GD_TTL=600
+      - GD_KEY=
+      - GD_SECRET=
+    profiles:
+      - donotstart
+
+  cloudflared:
+    container_name: cloudflared
+    image: docker.io/cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token <tunnel_token>
+
+  nginx-proxy:
+    container_name: nginx-proxy
+    image: docker.io/jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    environment:
+      - DISABLE_IPV6=true
+    ports:
+      - 80:80
+      - 81:81
+      - 443:443
+    volumes:
+      - ${VLM_PATH}/nginx-proxy/data:/data
+      - ${VLM_PATH}/nginx-proxy/letsencrypt:/etc/letsencrypt
+
+  watchtower:
+    container_name: watchtower
+    image: docker.io/containrrr/watchtower #https://github.com/containrrr/watchtower
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - WATCHTOWER_POLL_INTERVAL=86400 # 24 hours
+      - WATCHTOWER_SCHEDULE=0 0 4 * * THU # At 04:00 AM every Thursday
+      # - WATCHTOWER_MONITOR_ONLY=true
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_REMOVE_VOLUMES=true
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=pushover://shoutrrr:<app_token>@<user_key>
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/timezone:/etc/timezone:ro
+
+  virt-manager:
+    container_name: virt-manager
+    image: docker.io/mber5/virt-manager #https://github.com/m-bers/docker-virt-manager
+    restart: unless-stopped
+    # privileged: true
+    environment:
+      - DARK_MODE=true
+      # - HOSTS="['qemu:///system']"
+      - HOSTS="['qemu:///session']"
+    ports:
+      - 8185:80
+    volumes:
+      - /var/run/libvirt/libvirt-sock:/var/run/libvirt/libvirt-sock
+      - /var/lib/libvirt/images:/var/lib/libvirt/images
+    devices:
+      - /dev/kvm:/dev/kvm
+    profiles:
+      - donotstart

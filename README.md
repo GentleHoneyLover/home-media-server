@@ -43,8 +43,8 @@ sudo update-grub
 
 ### Mount external drives as needed
 ```
-sudo mkdir /media/<folder-name>
-sudo mount /dev/<device-name> /media/<folder-name>
+sudo mkdir /mnt/<folder-name>
+sudo mount /dev/<device-name> /mnt/<folder-name>
 ```
 
 ### Copy files as needed
@@ -84,7 +84,7 @@ sudo usermod -a -G media media
 usermod -a -G kvm <username>
 ```
 
-### (Optionally) install GUI (
+### (Optionally) install GUI
 Better to do it in a VM rather than on the host.
 ```
 sudo apt install lubuntu-desktop --no-install-recommends
@@ -110,7 +110,16 @@ From the GUI session run this and enter credentials:
 sudo vnclicensewiz
 ```
 
-## 3. Preparing disks for zfs
+## 3. Setting up libvirt
+
+### Change default image storage location
+Run the following command to open an xml configuration file for `default` vm storage pool:
+```
+virsh pool-edit default 
+```
+Replace standard location (usually `<path>/var/lib/libvirt/images</path>`) to a new path such as `<path>/<your-path>/vm-images</path>`
+
+## 4. Preparing disks for zfs
 
 ### Add disk aliases 
 Check `/dev/disk/by-id/` folder to identify your disks and add corresponding aliases to `/etc/zfs/vdev_id.conf`:
@@ -133,20 +142,35 @@ sudo udevadm trigger
 
 ### Create zfs pool
 ```
-sudo zpool create -f -o ashift=12 -m /mnt/hdd-zpool hdd-pool mirror hdd1 hdd2 mirror hdd3 hdd4
+sudo zpool create -f -o ashift=12 -m /mnt/<path> <pool-name> mirror hdd1 hdd2 mirror hdd3 hdd4
+```
+
+### (Optionally) add a SLOG device 
+```
+sudo zpool add -o ashift=13 <pool-name> log ssdz
 ```
 
 ### Turn off writing access time — should help with performance
 ```
-sudo zfs set atime=off hdd-pool
+sudo zfs set atime=off <pool-name>
 ```
 
 ### Create data set
 ```
-zfs create <nameofzpool>/<nameofdataset>
+sudo zfs create <nameofzpool>/<nameofdataset>
 ```
 
-## 4. Optional tweaks
+## 5. Optional tweaks
+
+### Disable fetching translations by apt
+Add the following config line to `/etc/apt/apt.conf.d/99translations`
+```
+Acquire::Languages "none";
+```
+To remove existing translation index files run:
+```
+sudo rm -r /var/lib/apt/lists/*Translation*
+```
 
 ### Disable motd news
 Edit `/etc/default/motd-new` as needed
@@ -162,7 +186,7 @@ Edit `/etc/netplan/00-installer-config.yaml` and add to the network section:
 renderer: NetworkManager
 ```
 
-## 5. Install and setup Docker
+## 6. Install and setup Docker
 
 ### Add repos, keys and install packages
 ```
@@ -190,7 +214,7 @@ wget https://launchpad.net/ubuntu/+source/cockpit/215-1~ubuntu19.10.1/+build/188
 sudo dpkg -i cockpit-docker_215-1~ubuntu19.10.1_all.deb
 ```
 
-## 6. (Alternatively) install and setup Podman
+## 7. (Alternatively) install and setup Podman
 
 ### Add repos, keys and install packages
 ```
@@ -213,7 +237,7 @@ graphroot = "/mnt/data/container-data/containers/storage"
 rootless_storage_path = "/mnt/data/container-data/containers-rootless/storage"
 ```
 
-## 7. Setting up samba
+## 8. Setting up samba
 
 ### Add new system users as needed
 ```

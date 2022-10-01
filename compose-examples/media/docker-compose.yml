@@ -1,0 +1,307 @@
+version: "3"
+services:
+
+  gluetun:
+    container_name: gluetun
+    image: docker.io/qmcgaw/gluetun
+    labels:
+      com.centurylinklabs.watchtower.monitor-only: "true"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - TZ=${TZ}
+      - VPNSP=custom
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=
+      - OPENVPN_PASSWORD=
+      - OPENVPN_CUSTOM_CONFIG=/gluetun/<...>.conf # https://nordvpn.com/servers/tools
+    ports:
+      - 8112:8112        # deluge web-ui port
+      - 58846:58846      # deluge daemon port
+      - 58846:58846/udp  # deluge daemon port udp
+      - 59999:59999      # deluge incoming port
+      - 59999:59999/udp  # deluge incoming port udp
+      - 8765:80          # speedtest port
+    volumes:
+      - ${VLM_PATH}/gluetun:/gluetun
+    # profiles:
+    #   - donotstart
+
+  deluge-filebot:
+    container_name: deluge-filebot
+    image: docker.io/gentlehoneylover/deluge-filebot
+    restart: unless-stopped
+    network_mode: service:gluetun
+    # network_mode: service:nordvpn
+    depends_on:
+      - gluetun
+      # - nordvpn
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+      - UMASK=002
+      - DELUGE_LOGLEVEL=warning
+    # ports:
+      # - 8112:8112
+    volumes:
+      - ${VLM_PATH}/deluge-filebot:/config
+      - ${VLM_PATH}/onedrive/data/Torrents:/watchfolder
+      - ${MED_PATH}/Downloads:/downloads
+      - ${MED_PATH}:/data
+
+  overseerr:
+    container_name: overseerr
+    image: lscr.io/linuxserver/overseerr
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    ports:
+      - 5055:5055
+    volumes:
+      - ${VLM_PATH}/overseerr:/config
+
+  jackett:
+    container_name: jackett
+    image: lscr.io/linuxserver/jackett
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+      - AUTO_UPDATE=false #optional
+      # - RUN_OPTS=<run options here> #optional
+    volumes:
+      - ${VLM_PATH}/jackett:/config
+      - ${VLM_PATH}/onedrive/data/Torrents:/blackhole
+    ports:
+      - 9117:9117
+
+  flaresolverr:
+    container_name: flaresolverr
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+      - TZ=${TZ}
+    ports:
+      - 8191:8191
+
+  prowlarr:
+    container_name: prowlarr
+    image: lscr.io/linuxserver/prowlarr:nightly
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    volumes:
+      - ${VLM_PATH}/prowlarr:/config
+    ports:
+      - 9696:9696
+
+  radarr:
+    container_name: radarr
+    image: lscr.io/linuxserver/radarr
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    volumes:
+      - ${VLM_PATH}/radarr:/config
+      - ${MED_PATH}:/data
+    ports:
+      - 7878:7878
+
+  sonarr:
+    container_name: sonarr
+    image: lscr.io/linuxserver/sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    volumes:
+      - ${VLM_PATH}/sonarr:/config
+      - ${MED_PATH}:/data
+    ports:
+      - 8989:8989
+
+  lidarr:
+    container_name: lidarr
+    image: lscr.io/linuxserver/lidarr
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    volumes:
+      - ${VLM_PATH}/lidarr:/config
+      - ${MED_PATH}:/data
+    ports:
+      - 8686:8686
+
+  readarr:
+    container_name: readarr
+    image: lscr.io/linuxserver/readarr:nightly
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    volumes:
+      - ${VLM_PATH}/readarr:/config
+      - ${MED_PATH}:/data
+    ports:
+      - 8585:8787
+
+  onedrive:
+    container_name: onedrive
+    image: docker.io/driveone/onedrive:alpine #https://github.com/abraunegg/onedrive/blob/master/docs/Docker.md
+    restart: unless-stopped
+    environment:
+      - ONEDRIVE_UID=${UID}
+      - ONEDRIVE_GID=${GID}
+    volumes:
+      - ${VLM_PATH}/onedrive/conf:/onedrive/conf
+      - ${VLM_PATH}/onedrive/data:/onedrive/data
+
+  plex:
+    container_name: plex
+    image: docker.io/plexinc/pms-docker #https://github.com/plexinc/pms-docker
+    restart: unless-stopped
+    hostname: S-Server
+    environment:
+      - TZ=${TZ}
+      - PLEX_CLAIM=claim-znwfuZSy6EsyEUZ66MyL
+      - ADVERTISE_IP=http://192.168.1.199:32400/
+      - ALLOWED_NETWORKS=192.168.1.0/24,172.17.0.0/16
+      - PLEX_UID=${UID}
+      - PLEX_GID=${GID}
+    ports:
+      - 32400:32400/tcp
+      - 3005:3005/tcp
+      - 8324:8324/tcp
+      - 32469:32469/tcp
+      - 1900:1900/udp
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+    volumes:
+      - ${VLM_PATH}/plex:/config
+      - ${MED_PATH}:/data
+    devices:
+      - /dev/dri:/dev/dri
+
+  tautulli:
+    container_name: tautulli
+    image: docker.io/tautulli/tautulli #https://github.com/Tautulli/Tautulli-Docker
+    restart: unless-stopped
+    environment:
+      - PUID=${UID}
+      - PGID=${GID}
+      - TZ=${TZ}
+    ports:
+      - 8181:8181
+    volumes:
+      - ${VLM_PATH}/tautulli:/config
+      - "${VLM_PATH}/plex/Library/Application\ Support/Plex Media Server/Logs:/plex_logs:ro"
+
+  organizr:
+    container_name: organizr
+    image: docker.io/organizr/organizr
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+    ports:
+      - 8080:80
+    volumes:
+      - ${VLM_PATH}/organizr:/config
+    profiles:
+      - donotstart
+
+  homarr:
+    container_name: homarr
+    image: ghcr.io/ajnart/homarr:latest
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+      # - "PASSWORD="
+    ports:
+      - 7575:7575
+    volumes:
+      - ${VLM_PATH}/homarr/config:/app/data/configs
+      - ${VLM_PATH}/homarr/icons:/app/public/icons
+      # - /var/run/docker.sock:/var/run/docker.sock
+
+  monitorr:
+    container_name: monitorr
+    image: docker.io/monitorr/monitorr
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+      - OOKLA_EULA_GDPR=true
+    ports:
+      - 8787:80
+    volumes:
+      - ${VLM_PATH}/monitorr:/app
+
+  speedtest:
+    container_name: speedtest
+    image: docker.io/henrywhitaker3/speedtest-tracker
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+      - OOKLA_EULA_GDPR=true
+      - AUTH=true
+    # ports:
+    #   - 8765:80
+    volumes:
+      - ${VLM_PATH}/speedtest:/config
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "200k"
+    profiles:
+      - donotstart
+
+  speedtest-new:
+    container_name: speedtest-new
+    image: ghcr.io/alexjustesen/speedtest-tracker:latest
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=${TZ}
+      - PUID=${UID}
+      - PGID=${GID}
+      - PHP_POOL_NAME=speedtest-tracker_php
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database.sqlite
+      - DISABLE_IPV6=true
+      # - OOKLA_EULA_GDPR=true
+      # - AUTH=true
+    # ports:
+    #   - 8765:80
+    volumes:
+      - ${VLM_PATH}/speedtest-new:/app
