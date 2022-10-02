@@ -180,8 +180,8 @@ services:
     environment:
       - TZ=${TZ}
       - PLEX_CLAIM=
-      - ADVERTISE_IP=http://192.168.1.199:32400/
-      - ALLOWED_NETWORKS=192.168.1.0/24,172.17.0.0/16
+      - ADVERTISE_IP=
+      - ALLOWED_NETWORKS=
       - PLEX_UID=${UID}
       - PLEX_GID=${GID}
     ports:
