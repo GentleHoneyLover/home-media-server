@@ -179,7 +179,7 @@ services:
     hostname: S-Server
     environment:
       - TZ=${TZ}
-      - PLEX_CLAIM=claim-znwfuZSy6EsyEUZ66MyL
+      - PLEX_CLAIM=
       - ADVERTISE_IP=http://192.168.1.199:32400/
       - ALLOWED_NETWORKS=192.168.1.0/24,172.17.0.0/16
       - PLEX_UID=${UID}
